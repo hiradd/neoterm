@@ -9,7 +9,12 @@ function! neoterm#tnew()
 endfunction
 
 function! neoterm#toggle()
-  call s:toggle(g:neoterm.last())
+  " call s:toggle(g:neoterm.last())
+  let l:terms = neoterm#get_current_tab_term_all()
+  for l:instance in l:terms
+    echo l:instance
+    call s:toggle(l:instance)
+  endfor
 endfunction
 
 function! neoterm#toggleAll()
@@ -22,7 +27,7 @@ function! s:toggle(instance)
   if g:neoterm.has_any()
     let a:instance.origin = exists('*win_getid') ? win_getid() : 0
 
-    if neoterm#tab_has_neoterm()
+    if neoterm#term_exists(a:instance)
       call a:instance.close()
     else
       call a:instance.open()
@@ -35,10 +40,10 @@ endfunction
 " Internal: Creates a new neoterm buffer, or opens if it already exists.
 function! neoterm#open()
   if !neoterm#tab_has_neoterm()
-    if !g:neoterm.has_any()
+    if !neoterm#current_tab_has_term()
       call neoterm#new()
     else
-      call g:neoterm.last().open()
+      call neoterm#get_current_tab_term().open()
     end
   end
 endfunction
@@ -73,11 +78,13 @@ endfunction
 " Internal: Loads a terminal, if it is not loaded, and execute a list of
 " commands.
 function! neoterm#exec(command)
-  if !g:neoterm.has_any() || g:neoterm_open_in_all_tabs
+  " if !g:neoterm.has_any() || g:neoterm_open_in_all_tabs
+  if !neoterm#current_tab_has_term()
     call neoterm#open()
   end
 
-  call g:neoterm.last().exec(a:command)
+  let l:target_term = neoterm#get_current_tab_term()
+  call l:target_term.exec(a:command)
 endfunction
 
 function! neoterm#map_for(command)
@@ -132,3 +139,32 @@ endfunction
 function! neoterm#list(arg_lead, cmd_line, cursor_pos)
   return filter(keys(g:neoterm.instances), 'v:val =~? "'. a:arg_lead. '"')
 endfunction
+
+function! neoterm#get_current_tab_term_all()
+  let l:instances = g:neoterm.instances
+  let l:tabnr = tabpagenr()
+  let l:terms = []
+  for l:t in values(l:instances)
+    if l:t.parent_tab_id == l:tabnr
+      call add(l:terms, l:t)
+    endif
+  endfor
+  return l:terms
+endfunction
+
+function! neoterm#current_tab_has_term()
+  return len(neoterm#get_current_tab_term_all()) > 0
+endfunction
+
+function! neoterm#get_current_tab_term()
+  if neoterm#current_tab_has_term()
+    let l:target_neoterm = neoterm#get_current_tab_term_all()
+    return l:target_neoterm[-1]
+  endif
+endfunction
+
+function! neoterm#term_exists(term)
+  let l:buffer_id = a:term.buffer_id
+  return bufexists(l:buffer_id) > 0 && bufwinnr(l:buffer_id) != -1
+endfunction
+

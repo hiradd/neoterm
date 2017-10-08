@@ -17,6 +17,7 @@ function! g:neoterm.term.new(origin, handlers)
   end
 
   let l:instance.buffer_id = bufnr('')
+  let l:instance.parent_tab_id = tabpagenr()
   let g:neoterm.instances[l:instance.id] = l:instance
 
   let b:term_title = 'neoterm-'.l:id
